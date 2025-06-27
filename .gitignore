@@ -136,3 +136,26 @@ dist
 .pnp.*
 *.DS_Store
 backend/.DS_Store
+
+################
+###   .NET   ###
+################
+# Ignore obj and bin folders in the backend directory and all subdirectories
+backend/**/[Oo]bj/
+backend/**/[Bb]in/
+
+# Other .NET files
+backend/.vs/
+backend/TestResults/
+backend/*.[Cc]ore.user
+backend/*.[Uu]ser
+backend/*.[Ss]ln.docstates
+
+#########################
+### React Native ###
+#########################
+frontend/WatchListApp/ios/build/
+frontend/WatchListApp/ios/Pods/
+frontend/WatchListApp/android/build/
+frontend/WatchListApp/android/app/build/
+frontend/WatchListApp/.expo/
