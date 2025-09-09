@@ -20,7 +20,7 @@
           "net9.0"
         ],
         "sources": {
-          "/opt/homebrew/Cellar/dotnet/9.0.6/libexec/library-packs": {},
+          "/opt/homebrew/Cellar/dotnet/9.0.7/libexec/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -48,6 +48,18 @@
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[9.0.6, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[9.0.8, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
+            "TMDbLib": {
+              "target": "Package",
+              "version": "[2.2.0, )"
             }
           },
           "imports": [
@@ -69,7 +81,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/9.0.6/libexec/sdk/9.0.107/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/9.0.7/libexec/sdk/9.0.108/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

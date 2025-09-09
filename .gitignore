@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+pnpm-debug.log*
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -127,7 +128,6 @@ dist
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
-*.vscode
 
 # yarn v2
 .yarn/cache
@@ -160,3 +160,27 @@ frontend/WatchListApp/ios/Pods/
 frontend/WatchListApp/android/build/
 frontend/WatchListApp/android/app/build/
 frontend/WatchListApp/.expo/
+
+####################
+###   Frontend   ###
+####################
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# Editor specific
+frontend/.idea/
+frontend/*.suo
+frontend/*.ntvs*
+frontend/*.njsproj
+frontend/*.sln
+frontend/*.sw?
+
+# VSCode - ignore all files but allow specific ones for workspace consistency
+.vscode/*
+!.vscode/extensions.json
+frontend/.vscode/*
+!frontend/.vscode/extensions.json
+
+*package-lock.json
