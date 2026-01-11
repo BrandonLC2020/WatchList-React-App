@@ -184,3 +184,4 @@ frontend/.vscode/*
 !frontend/.vscode/extensions.json
 
 *package-lock.json
+backend/src/WatchListApi/appsettings.json
