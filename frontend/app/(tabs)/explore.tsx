@@ -1,8 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
+import { fetchMovieConfig, MovieSearchResult, searchMovies } from '@/api/tmdb';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,6 +10,71 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 
 export default function TabTwoScreen() {
+  const [query, setQuery] = useState('');
+  const [configBaseUrl, setConfigBaseUrl] = useState<string | null>(null);
+  const [results, setResults] = useState<MovieSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+    fetchMovieConfig()
+      .then((config) => {
+        if (!isActive) return;
+        setConfigBaseUrl(config.images?.secure_base_url ?? null);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setErrorMessage('Unable to load image configuration.');
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) {
+      setResults([]);
+      setErrorMessage(null);
+      setLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setLoading(true);
+
+    const handle = setTimeout(() => {
+      searchMovies(trimmedQuery)
+        .then((response) => {
+          if (!isActive) return;
+          setResults(response.results ?? []);
+          setErrorMessage(null);
+        })
+        .catch(() => {
+          if (!isActive) return;
+          setErrorMessage('Search failed. Please try again.');
+        })
+        .finally(() => {
+          if (!isActive) return;
+          setLoading(false);
+        });
+    }, 350);
+
+    return () => {
+      isActive = false;
+      clearTimeout(handle);
+    };
+  }, [query]);
+
+  const buildPosterUrl = useMemo(() => {
+    if (!configBaseUrl) {
+      return (_: string | null) => null;
+    }
+    return (path: string | null) => (path ? `${configBaseUrl}w500${path}` : null);
+  }, [configBaseUrl]);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
@@ -30,70 +95,54 @@ export default function TabTwoScreen() {
           Explore
         </ThemedText>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
+      <ThemedText style={styles.subtitle}>Search for movies from your watchlist backend.</ThemedText>
+      <ThemedView style={styles.searchContainer}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search movies..."
+          placeholderTextColor="#9E9E9E"
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.searchInput}
         />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
+        {loading ? <ActivityIndicator size="small" /> : null}
+      </ThemedView>
+      {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
+      <FlatList
+        data={results}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        scrollEnabled={false}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const posterUrl = buildPosterUrl(item.poster_path);
+          return (
+            <ThemedView style={styles.resultRow}>
+              {posterUrl ? (
+                <Image source={{ uri: posterUrl }} style={styles.poster} contentFit="cover" />
+              ) : (
+                <View style={styles.posterPlaceholder} />
+              )}
+              <ThemedView style={styles.resultText}>
+                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                {item.release_date ? (
+                  <ThemedText style={styles.releaseDate}>{item.release_date}</ThemedText>
+                ) : null}
+              </ThemedView>
+            </ThemedView>
+          );
+        }}
+        ListEmptyComponent={
+          query.trim() ? (
+            <ThemedText style={styles.emptyText}>
+              {loading ? 'Searching...' : 'No results yet.'}
             </ThemedText>
-          ),
-        })}
-      </Collapsible>
+          ) : (
+            <ThemedText style={styles.emptyText}>Start typing to search for movies.</ThemedText>
+          )
+        }
+      />
     </ParallaxScrollView>
   );
 }
@@ -108,5 +157,59 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     gap: 8,
+  },
+  subtitle: {
+    marginBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F1F1F1',
+    color: '#1A1A1A',
+  },
+  errorText: {
+    color: '#B00020',
+    marginBottom: 8,
+  },
+  listContent: {
+    paddingBottom: 24,
+    gap: 12,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  poster: {
+    width: 80,
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: '#E0E0E0',
+  },
+  posterPlaceholder: {
+    width: 80,
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: '#E0E0E0',
+  },
+  resultText: {
+    flex: 1,
+    gap: 4,
+  },
+  releaseDate: {
+    color: '#6B6B6B',
+  },
+  emptyText: {
+    color: '#6B6B6B',
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

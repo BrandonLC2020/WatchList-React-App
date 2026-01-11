@@ -1,7 +1,5 @@
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using WatchListApi.Models;
 
 namespace WatchListApi.Controllers;
 
@@ -10,20 +8,12 @@ namespace WatchListApi.Controllers;
 public class WatchListController : ControllerBase
 {
     private readonly FirestoreDb _firestoreDb;
-    private readonly string _tmdbApiKey;
     private const string CollectionName = "watchlist"; // Your Firestore collection name
 
-    // Inject FirestoreDb and TmdbSettings via constructor
-    public WatchListController(FirestoreDb firestoreDb, IOptions<TmdbSettings> tmdbSettings)
+    // Inject FirestoreDb via constructor
+    public WatchListController(FirestoreDb firestoreDb)
     {
         _firestoreDb = firestoreDb;
-        _tmdbApiKey = tmdbSettings.Value.ApiKey;
-    }
-
-    [HttpGet("tmdb-key")]
-    public string GetTmdbKey()
-    {
-        return _tmdbApiKey;
     }
 
     // A placeholder record for a watchlist item

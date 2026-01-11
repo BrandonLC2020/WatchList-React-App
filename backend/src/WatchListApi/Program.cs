@@ -1,4 +1,7 @@
 using WatchListApi.Models;
+using WatchListApi.Services;
+using Google.Cloud.Firestore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -20,6 +23,8 @@ if (!string.IsNullOrEmpty(credentialPath))
 // 3. Register FirestoreDb as a Singleton
 builder.Services.AddSingleton<FirestoreDb>(provider => 
     FirestoreDb.Create(projectId));
+
+builder.Services.AddHttpClient<ITmdbService, TmdbService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
