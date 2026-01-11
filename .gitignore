@@ -185,3 +185,4 @@ frontend/.vscode/*
 
 *package-lock.json
 backend/src/WatchListApi/appsettings.json
+backend/src/WatchListApi/Watchlist-Web-Firebase-Admin-SDK.json
