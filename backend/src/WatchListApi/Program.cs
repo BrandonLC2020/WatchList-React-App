@@ -1,7 +1,11 @@
+using WatchListApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Configure TmdbSettings
+builder.Services.Configure<TmdbSettings>(builder.Configuration.GetSection("Tmdb"));
 
 // 1. Read configuration
 var projectId = builder.Configuration["Firebase:ProjectId"];
