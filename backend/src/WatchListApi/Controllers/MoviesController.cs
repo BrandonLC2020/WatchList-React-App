@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using WatchListApi.Models;
 using WatchListApi.Services;
 
 namespace WatchListApi.Controllers
@@ -19,14 +20,57 @@ namespace WatchListApi.Controllers
         public async Task<IActionResult> GetConfiguration()
         {
             var config = await _tmdbService.GetConfigurationAsync();
-            return Ok(config);
+            return Ok(ApiResponse<TmdbConfiguration?>.Ok(config));
         }
 
         [HttpGet("search")]
-        public async Task<IActionResult> SearchMovies([FromQuery] string query)
+        public async Task<IActionResult> SearchMulti([FromQuery] string query)
         {
-            var movies = await _tmdbService.SearchMoviesAsync(query);
-            return Ok(movies);
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest(ApiResponse<string>.Fail("Query is required."));
+            }
+
+            var results = await _tmdbService.SearchMultiAsync(query);
+            return Ok(ApiResponse<TmdbPagedResponse<TmdbSearchResult>?>.Ok(results));
+        }
+
+        [HttpGet("trending")]
+        public async Task<IActionResult> GetTrending()
+        {
+            var results = await _tmdbService.GetTrendingAsync();
+            return Ok(ApiResponse<TmdbPagedResponse<TmdbSearchResult>?>.Ok(results));
+        }
+
+        [HttpGet("discover")]
+        public async Task<IActionResult> Discover([FromQuery] int page = 1)
+        {
+            if (page <= 0)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Page must be greater than zero."));
+            }
+
+            var results = await _tmdbService.DiscoverAsync(page);
+            return Ok(ApiResponse<TmdbPagedResponse<TmdbSearchResult>?>.Ok(results));
+        }
+
+        [HttpGet("details/{id:int}")]
+        public async Task<IActionResult> GetDetails(int id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Id must be greater than zero."));
+            }
+
+            var details = await _tmdbService.GetMovieDetailsAsync(id);
+            var providers = await _tmdbService.GetWatchProvidersAsync(id);
+            var response = new MovieDetailsResponse
+            {
+                Details = details,
+                Providers = providers
+            };
+
+            return Ok(ApiResponse<MovieDetailsResponse>.Ok(response));
         }
     }
 }

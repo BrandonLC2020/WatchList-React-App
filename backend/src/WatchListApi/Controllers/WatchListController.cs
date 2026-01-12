@@ -1,62 +1,81 @@
-using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using WatchListApi.Models;
+using WatchListApi.Repositories;
 
 namespace WatchListApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class WatchListController : ControllerBase
 {
-    private readonly FirestoreDb _firestoreDb;
-    private const string CollectionName = "watchlist"; // Your Firestore collection name
+    private readonly WatchListRepository _watchListRepository;
 
-    // Inject FirestoreDb via constructor
-    public WatchListController(FirestoreDb firestoreDb)
+    public WatchListController(WatchListRepository watchListRepository)
     {
-        _firestoreDb = firestoreDb;
+        _watchListRepository = watchListRepository;
     }
 
-    // A placeholder record for a watchlist item
-    // Note: You might want to add [FirestoreData] and [FirestoreProperty] attributes 
-    // to a dedicated model class for easier serialization.
-    public record WatchListItem(string Id, string Title, string Type);
-
     [HttpGet]
-    public async Task<IEnumerable<WatchListItem>> Get()
+    public async Task<IActionResult> Get()
     {
-        CollectionReference collection = _firestoreDb.Collection(CollectionName);
-        QuerySnapshot snapshot = await collection.GetSnapshotAsync();
-
-        var items = new List<WatchListItem>();
-
-        foreach (DocumentSnapshot document in snapshot.Documents)
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
         {
-            if (document.Exists)
-            {
-                // Mapping manual fields effectively. 
-                // For auto-mapping, create a class with [FirestoreData] attributes.
-                Dictionary<string, object> data = document.ToDictionary();
-                items.Add(new WatchListItem(
-                    document.Id,
-                    data.ContainsKey("Title") ? data["Title"].ToString() : "",
-                    data.ContainsKey("Type") ? data["Type"].ToString() : ""
-                ));
-            }
+            return Unauthorized(ApiResponse<string>.Fail("Missing user context."));
         }
 
-        return items;
+        var items = await _watchListRepository.GetWatchlistByUserIdAsync(userId);
+        return Ok(ApiResponse<List<WatchListItem>>.Ok(items));
     }
 
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] WatchListItem newItem)
+    public async Task<IActionResult> Post([FromBody] CreateWatchListItemRequest newItem)
     {
-        CollectionReference collection = _firestoreDb.Collection(CollectionName);
-        
-        // specific object to save
-        var data = new { Title = newItem.Title, Type = newItem.Type };
-        
-        await collection.AddAsync(data);
-        
-        return Ok();
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized(ApiResponse<string>.Fail("Missing user context."));
+        }
+
+        if (newItem.TmdbId <= 0 || string.IsNullOrWhiteSpace(newItem.Title) || string.IsNullOrWhiteSpace(newItem.Type))
+        {
+            return BadRequest(ApiResponse<string>.Fail("TmdbId, Title, and Type are required."));
+        }
+
+        await _watchListRepository.AddToWatchlistAsync(userId, newItem);
+        return Ok(ApiResponse<string>.Ok("Added."));
+    }
+
+    [HttpDelete("{tmdbId:int}")]
+    public async Task<IActionResult> Delete(int tmdbId)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized(ApiResponse<string>.Fail("Missing user context."));
+        }
+
+        await _watchListRepository.RemoveFromWatchlistAsync(userId, tmdbId);
+        return Ok(ApiResponse<string>.Ok("Removed."));
+    }
+
+    private string? GetUserId()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return User.FindFirstValue("user_id")
+                   ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                   ?? User.FindFirstValue("sub");
+        }
+
+        if (Request.Headers.TryGetValue("X-User-Id", out var headerValue))
+        {
+            return headerValue.ToString();
+        }
+
+        return null;
     }
 }

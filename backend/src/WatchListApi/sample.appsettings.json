@@ -12,6 +12,8 @@
   },
   "Tmdb": {
     "ApiKey": "INSERT_API_KEY_HERE",
-    "ApiReadAccessToken": "INSERT_API_READ_ACCESS_TOKEN_HERE"
+    "ApiReadAccessToken": "INSERT_API_READ_ACCESS_TOKEN_HERE",
+    "BaseUrl": "https://api.themoviedb.org/3",
+    "CacheMinutes": 30
   }
 }
