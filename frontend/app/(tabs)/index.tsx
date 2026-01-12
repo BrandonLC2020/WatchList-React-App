@@ -1,98 +1,181 @@
+import { useMemo } from 'react';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
+import { discoverMovies, fetchMovieConfig, getTrendingMovies } from '@/api/tmdb';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Fonts } from '@/constants/theme';
+import { TmdbSearchResult } from '@/constants/types';
+
+const buildImageUrl = (baseUrl: string | null, size: string, path?: string | null) => {
+  if (!baseUrl || !path) return null;
+  return `${baseUrl}${size}${path}`;
+};
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const configQuery = useQuery({
+    queryKey: ['tmdb-config'],
+    queryFn: fetchMovieConfig,
+  });
+  const trendingQuery = useQuery({
+    queryKey: ['trending'],
+    queryFn: getTrendingMovies,
+  });
+  const discoverQuery = useQuery({
+    queryKey: ['discover'],
+    queryFn: () => discoverMovies(1),
+  });
+
+  const baseUrl = configQuery.data?.images?.secure_base_url ?? null;
+  const heroItem = trendingQuery.data?.results?.[0] ?? null;
+
+  const heroPoster = useMemo(
+    () => buildImageUrl(baseUrl, 'w780', heroItem?.poster_path),
+    [baseUrl, heroItem?.poster_path],
+  );
+
+  const handlePressMovie = (item: TmdbSearchResult) => {
+    router.push(`/movie/${item.id}`);
+  };
+
+  const renderRow = (title: string, items?: TmdbSearchResult[]) => (
+    <ThemedView style={styles.rowSection}>
+      <ThemedText type="subtitle" style={styles.rowTitle}>
+        {title}
+      </ThemedText>
+      <FlatList
+        data={items ?? []}
+        keyExtractor={(item) => item.id.toString()}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.rowContent}
+        renderItem={({ item }) => {
+          const posterUrl = buildImageUrl(baseUrl, 'w342', item.poster_path);
+          const name = item.title ?? item.name ?? 'Untitled';
+          return (
+            <Pressable onPress={() => handlePressMovie(item)} style={styles.posterCard}>
+              {posterUrl ? (
+                <Image
+                  source={{ uri: posterUrl }}
+                  style={styles.posterImage}
+                  contentFit="cover"
+                  transition={400}
+                />
+              ) : (
+                <View style={styles.posterPlaceholder} />
+              )}
+              <ThemedText numberOfLines={2} style={styles.posterLabel}>
+                {name}
+              </ThemedText>
+            </Pressable>
+          );
+        }}
+      />
+    </ThemedView>
+  );
+
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: '#111111', dark: '#0F0F0F' }}
       headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
+        heroPoster ? (
+          <Image source={{ uri: heroPoster }} style={styles.heroImage} contentFit="cover" />
+        ) : (
+          <View style={styles.heroPlaceholder} />
+        )
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+        <ThemedText type="title" style={styles.titleText}>
+          WatchList
         </ThemedText>
+        <ThemedText style={styles.subtitleText}>Find your next obsession.</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
+      {heroItem ? (
+        <Pressable style={styles.heroCard} onPress={() => handlePressMovie(heroItem)}>
+          <ThemedText type="subtitle" style={styles.heroTitle}>
+            {heroItem.title ?? heroItem.name}
+          </ThemedText>
+          <ThemedText numberOfLines={3} style={styles.heroCaption}>
+            Trending now
+          </ThemedText>
+        </Pressable>
+      ) : null}
+
+      {renderRow('Trending Now', trendingQuery.data?.results ?? [])}
+      {renderRow('New Releases', discoverQuery.data?.results ?? [])}
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 4,
+    marginBottom: 16,
+  },
+  titleText: {
+    fontFamily: Fonts.sans,
+    letterSpacing: 0.4,
+  },
+  subtitleText: {
+    color: '#B0B0B0',
+  },
+  heroImage: {
+    width: '100%',
+    height: 320,
+  },
+  heroPlaceholder: {
+    width: '100%',
+    height: 320,
+    backgroundColor: '#1E1E1E',
+  },
+  heroCard: {
+    marginTop: -48,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#1E1E1E',
+  },
+  heroTitle: {
+    fontSize: 22,
+  },
+  heroCaption: {
+    color: '#9C9C9C',
+    marginTop: 6,
+  },
+  rowSection: {
+    marginBottom: 24,
+  },
+  rowTitle: {
+    marginBottom: 12,
+  },
+  rowContent: {
+    gap: 12,
+    paddingRight: 12,
+  },
+  posterCard: {
+    width: 130,
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  posterImage: {
+    width: '100%',
+    aspectRatio: 2 / 3,
+    borderRadius: 14,
+    backgroundColor: '#2A2A2A',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  posterPlaceholder: {
+    width: '100%',
+    aspectRatio: 2 / 3,
+    borderRadius: 14,
+    backgroundColor: '#2A2A2A',
+  },
+  posterLabel: {
+    fontSize: 12,
+    color: '#D8D8D8',
   },
 });

@@ -1,79 +1,65 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 
-import { fetchMovieConfig, MovieSearchResult, searchMovies } from '@/api/tmdb';
+import { fetchMovieConfig, searchMovies } from '@/api/tmdb';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import { TmdbSearchResult } from '@/constants/types';
 
 export default function TabTwoScreen() {
+  const router = useRouter();
   const [query, setQuery] = useState('');
-  const [configBaseUrl, setConfigBaseUrl] = useState<string | null>(null);
-  const [results, setResults] = useState<MovieSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  const configQuery = useQuery({
+    queryKey: ['tmdb-config'],
+    queryFn: fetchMovieConfig,
+  });
 
   useEffect(() => {
-    let isActive = true;
-    fetchMovieConfig()
-      .then((config) => {
-        if (!isActive) return;
-        setConfigBaseUrl(config.images?.secure_base_url ?? null);
-      })
-      .catch(() => {
-        if (!isActive) return;
-        setErrorMessage('Unable to load image configuration.');
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery) {
-      setResults([]);
-      setErrorMessage(null);
-      setLoading(false);
-      return;
-    }
-
-    let isActive = true;
-    setLoading(true);
-
     const handle = setTimeout(() => {
-      searchMovies(trimmedQuery)
-        .then((response) => {
-          if (!isActive) return;
-          setResults(response.results ?? []);
-          setErrorMessage(null);
-        })
-        .catch(() => {
-          if (!isActive) return;
-          setErrorMessage('Search failed. Please try again.');
-        })
-        .finally(() => {
-          if (!isActive) return;
-          setLoading(false);
-        });
+      setDebouncedQuery(query.trim());
     }, 350);
 
-    return () => {
-      isActive = false;
-      clearTimeout(handle);
-    };
+    return () => clearTimeout(handle);
   }, [query]);
 
+  const searchQuery = useQuery({
+    queryKey: ['search', debouncedQuery],
+    queryFn: () => searchMovies(debouncedQuery),
+    enabled: Boolean(debouncedQuery),
+  });
+
   const buildPosterUrl = useMemo(() => {
+    const configBaseUrl = configQuery.data?.images?.secure_base_url ?? null;
     if (!configBaseUrl) {
-      return (_: string | null) => null;
+      return (_: string | null | undefined) => null;
     }
-    return (path: string | null) => (path ? `${configBaseUrl}w500${path}` : null);
-  }, [configBaseUrl]);
+    return (path: string | null | undefined) => (path ? `${configBaseUrl}w500${path}` : null);
+  }, [configQuery.data?.images?.secure_base_url]);
+
+  const results = (searchQuery.data?.results ?? []).filter(
+    (result) => result.media_type !== 'person',
+  );
+
+  const suggestedTags = ['Oppenheimer', 'Animated', 'Marvel', 'Drama', 'Comedy', 'Thriller'];
+
+  const handlePressItem = (item: TmdbSearchResult) => {
+    router.push(`/movie/${item.id}`);
+  };
 
   return (
     <ParallaxScrollView
@@ -106,40 +92,55 @@ export default function TabTwoScreen() {
           autoCorrect={false}
           style={styles.searchInput}
         />
-        {loading ? <ActivityIndicator size="small" /> : null}
+        {searchQuery.isFetching ? <ActivityIndicator size="small" /> : null}
       </ThemedView>
-      {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
+      {searchQuery.isError ? (
+        <ThemedText style={styles.errorText}>Search failed. Please try again.</ThemedText>
+      ) : null}
       <FlatList
         data={results}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
-        scrollEnabled={false}
+        numColumns={3}
+        columnWrapperStyle={styles.gridRow}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const posterUrl = buildPosterUrl(item.poster_path);
+          const title = item.title ?? item.name ?? '';
           return (
-            <ThemedView style={styles.resultRow}>
+            <Pressable style={styles.gridItem} onPress={() => handlePressItem(item)}>
               {posterUrl ? (
-                <Image source={{ uri: posterUrl }} style={styles.poster} contentFit="cover" />
+                <Image
+                  source={{ uri: posterUrl }}
+                  style={styles.poster}
+                  contentFit="cover"
+                  transition={400}
+                />
               ) : (
                 <View style={styles.posterPlaceholder} />
               )}
-              <ThemedView style={styles.resultText}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                {item.release_date ? (
-                  <ThemedText style={styles.releaseDate}>{item.release_date}</ThemedText>
-                ) : null}
-              </ThemedView>
-            </ThemedView>
+              <ThemedText numberOfLines={2} style={styles.posterTitle}>
+                {title}
+              </ThemedText>
+            </Pressable>
           );
         }}
         ListEmptyComponent={
           query.trim() ? (
             <ThemedText style={styles.emptyText}>
-              {loading ? 'Searching...' : 'No results yet.'}
+              {searchQuery.isFetching ? 'Searching...' : 'No results yet.'}
             </ThemedText>
           ) : (
-            <ThemedText style={styles.emptyText}>Start typing to search for movies.</ThemedText>
+            <View style={styles.tagsContainer}>
+              <ThemedText style={styles.emptyText}>Try one of these searches:</ThemedText>
+              <View style={styles.tagsRow}>
+                {suggestedTags.map((tag) => (
+                  <Pressable key={tag} style={styles.tag} onPress={() => setQuery(tag)}>
+                    <ThemedText style={styles.tagText}>{tag}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           )
         }
       />
@@ -181,35 +182,56 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
-    gap: 12,
+    gap: 16,
   },
-  resultRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
+  gridRow: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  gridItem: {
+    flex: 1,
+    maxWidth: '32%',
+    gap: 8,
   },
   poster: {
-    width: 80,
-    height: 120,
+    width: '100%',
+    aspectRatio: 2 / 3,
     borderRadius: 12,
     backgroundColor: '#E0E0E0',
   },
   posterPlaceholder: {
-    width: 80,
-    height: 120,
+    width: '100%',
+    aspectRatio: 2 / 3,
     borderRadius: 12,
     backgroundColor: '#E0E0E0',
   },
-  resultText: {
-    flex: 1,
-    gap: 4,
-  },
-  releaseDate: {
-    color: '#6B6B6B',
+  posterTitle: {
+    fontSize: 12,
+    color: '#D0D0D0',
   },
   emptyText: {
     color: '#6B6B6B',
     textAlign: 'center',
     marginTop: 12,
+  },
+  tagsContainer: {
+    marginTop: 12,
+    gap: 12,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  tag: {
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#2B2B2B',
+  },
+  tagText: {
+    color: '#EDEDED',
+    fontSize: 12,
   },
 });
