@@ -18,11 +18,20 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import { TmdbSearchResult } from '@/constants/types';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 
 export default function TabTwoScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  const { numColumns, itemWidth, gap } = useResponsiveLayout({
+    mobileColumns: 3,
+    tabletColumns: 4,
+    desktopColumns: 6,
+    gap: 16,
+    containerPadding: 32, // ParallaxScrollView default padding logic + list content padding
+  });
 
   const configQuery = useQuery({
     queryKey: ['tmdb-config'],
@@ -98,17 +107,18 @@ export default function TabTwoScreen() {
         <ThemedText style={styles.errorText}>Search failed. Please try again.</ThemedText>
       ) : null}
       <FlatList
+        key={numColumns} // Force re-render on column change
         data={results}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        numColumns={3}
-        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={[styles.listContent, { gap }]}
+        numColumns={numColumns}
+        columnWrapperStyle={[styles.gridRow, { gap }]}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const posterUrl = buildPosterUrl(item.poster_path);
           const title = item.title ?? item.name ?? '';
           return (
-            <Pressable style={styles.gridItem} onPress={() => handlePressItem(item)}>
+            <Pressable style={[styles.gridItem, { width: itemWidth, maxWidth: itemWidth }]} onPress={() => handlePressItem(item)}>
               {posterUrl ? (
                 <Image
                   source={{ uri: posterUrl }}

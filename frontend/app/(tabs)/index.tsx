@@ -11,6 +11,9 @@ import { ThemedView } from '@/components/themed-view';
 import { Fonts } from '@/constants/theme';
 import { TmdbSearchResult } from '@/constants/types';
 
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
+
 const buildImageUrl = (baseUrl: string | null, size: string, path?: string | null) => {
   if (!baseUrl || !path) return null;
   return `${baseUrl}${size}${path}`;
@@ -30,6 +33,8 @@ export default function HomeScreen() {
     queryKey: ['discover'],
     queryFn: () => discoverMovies(1),
   });
+
+  const { isMobile } = useResponsiveLayout();
 
   const baseUrl = configQuery.data?.images?.secure_base_url ?? null;
   const heroItem = trendingQuery.data?.results?.[0] ?? null;
@@ -58,7 +63,9 @@ export default function HomeScreen() {
           const posterUrl = buildImageUrl(baseUrl, 'w342', item.poster_path);
           const name = item.title ?? item.name ?? 'Untitled';
           return (
-            <Pressable onPress={() => handlePressMovie(item)} style={styles.posterCard}>
+            <Pressable
+              onPress={() => handlePressMovie(item)}
+              style={[styles.posterCard, { width: isMobile ? 130 : 160 }]}>
               {posterUrl ? (
                 <Image
                   source={{ uri: posterUrl }}
@@ -84,9 +91,13 @@ export default function HomeScreen() {
       headerBackgroundColor={{ light: '#111111', dark: '#0F0F0F' }}
       headerImage={
         heroPoster ? (
-          <Image source={{ uri: heroPoster }} style={styles.heroImage} contentFit="cover" />
+          <Image
+            source={{ uri: heroPoster }}
+            style={[styles.heroImage, { height: isMobile ? 350 : 500 }]}
+            contentFit="cover"
+          />
         ) : (
-          <View style={styles.heroPlaceholder} />
+          <View style={[styles.heroPlaceholder, { height: isMobile ? 350 : 500 }]} />
         )
       }>
       <ThemedView style={styles.titleContainer}>

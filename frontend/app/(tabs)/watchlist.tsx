@@ -12,6 +12,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { WatchListItem } from '@/constants/types';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
+import { FlatList } from 'react-native';
 
 const buildImageUrl = (baseUrl: string | null, size: string, path?: string | null) => {
   if (!baseUrl || !path) return null;
@@ -57,6 +59,14 @@ export default function WatchlistScreen() {
     return list.filter((item) => item.type.toLowerCase() === filter);
   }, [watchlistQuery.data, filter]);
 
+  const { numColumns, itemWidth, gap } = useResponsiveLayout({
+    mobileColumns: 1, // List view on mobile
+    tabletColumns: 2,
+    desktopColumns: 3,
+    gap: 12,
+    containerPadding: 40, // 20 padding on each side
+  });
+
   const renderRightActions = (item: WatchListItem) => (
     <Pressable
       style={styles.deleteAction}
@@ -93,39 +103,48 @@ export default function WatchlistScreen() {
         {items.length === 0 ? (
           <ThemedText style={styles.emptyState}>No items yet. Start exploring.</ThemedText>
         ) : (
-          items.map((item) => {
-            const posterUrl = buildImageUrl(baseUrl, 'w342', item.posterPath);
-            return (
-              <Swipeable
-                key={`${item.tmdbId}-${item.id ?? 'item'}`}
-                renderRightActions={() => renderRightActions(item)}>
-                <Pressable
-                  style={styles.row}
-                  onPress={() => router.push(`/movie/${item.tmdbId}`)}>
-                  {posterUrl ? (
-                    <Image
-                      source={{ uri: posterUrl }}
-                      style={styles.poster}
-                      contentFit="cover"
-                      transition={300}
-                    />
-                  ) : (
-                    <View style={styles.posterPlaceholder} />
-                  )}
-                  <View style={styles.rowInfo}>
-                    <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                    <ThemedText style={styles.rowMeta}>
-                      {item.releaseYear ? item.releaseYear : 'Year n/a'} ·{' '}
-                      {item.type.toUpperCase()}
-                    </ThemedText>
-                  </View>
-                </Pressable>
-              </Swipeable>
-            );
-          })
+          <FlatList
+            key={numColumns}
+            data={items}
+            keyExtractor={(item) => `${item.tmdbId}-${item.id ?? 'item'}`}
+            numColumns={numColumns}
+            contentContainerStyle={{ gap }}
+            columnWrapperStyle={numColumns > 1 ? { gap } : undefined}
+            renderItem={({ item }) => {
+              const posterUrl = buildImageUrl(baseUrl, 'w342', item.posterPath);
+              return (
+                <View style={{ width: itemWidth }}>
+                  <Swipeable
+                    renderRightActions={() => renderRightActions(item)}>
+                    <Pressable
+                      style={styles.row}
+                      onPress={() => router.push(`/movie/${item.tmdbId}`)}>
+                      {posterUrl ? (
+                        <Image
+                          source={{ uri: posterUrl }}
+                          style={styles.poster}
+                          contentFit="cover"
+                          transition={300}
+                        />
+                      ) : (
+                        <View style={styles.posterPlaceholder} />
+                      )}
+                      <View style={styles.rowInfo}>
+                        <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                        <ThemedText style={styles.rowMeta}>
+                          {item.releaseYear ? item.releaseYear : 'Year n/a'} ·{' '}
+                          {item.type.toUpperCase()}
+                        </ThemedText>
+                      </View>
+                    </Pressable>
+                  </Swipeable>
+                </View>
+              );
+            }}
+          />
         )}
       </View>
-    </ThemedView>
+    </ThemedView >
   );
 }
 
