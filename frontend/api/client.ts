@@ -1,7 +1,7 @@
 import { ApiResponse } from '@/constants/types';
 
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:5000';
+  process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:5223';
 
 const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
 

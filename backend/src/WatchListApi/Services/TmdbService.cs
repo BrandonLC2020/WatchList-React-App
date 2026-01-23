@@ -29,7 +29,7 @@ namespace WatchListApi.Services
         {
             return GetCachedAsync(
                 $"tmdb:config",
-                () => GetAsync<TmdbConfiguration>($"{_tmdbSettings.BaseUrl}/configuration"));
+                () => GetAsync<TmdbConfiguration>($"{_tmdbSettings.BaseUrl}/configuration?api_key={_tmdbSettings.ApiKey}"));
         }
 
         public Task<TmdbPagedResponse<TmdbSearchResult>?> SearchMultiAsync(string query)
