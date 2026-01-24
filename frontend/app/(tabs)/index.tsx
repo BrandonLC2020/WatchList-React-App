@@ -6,6 +6,7 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { discoverMovies, fetchMovieConfig, getTrendingMovies } from '@/api/tmdb';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { MediaCard } from '@/components/MediaCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Fonts } from '@/constants/theme';
@@ -60,26 +61,14 @@ export default function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowContent}
         renderItem={({ item }) => {
-          const posterUrl = buildImageUrl(baseUrl, 'w342', item.poster_path);
-          const name = item.title ?? item.name ?? 'Untitled';
           return (
-            <Pressable
-              onPress={() => handlePressMovie(item)}
-              style={[styles.posterCard, { width: isMobile ? 130 : 160 }]}>
-              {posterUrl ? (
-                <Image
-                  source={{ uri: posterUrl }}
-                  style={styles.posterImage}
-                  contentFit="cover"
-                  transition={400}
-                />
-              ) : (
-                <View style={styles.posterPlaceholder} />
-              )}
-              <ThemedText numberOfLines={2} style={styles.posterLabel}>
-                {name}
-              </ThemedText>
-            </Pressable>
+            <MediaCard
+              item={item}
+              onPress={handlePressMovie}
+              width={isMobile ? 130 : 160}
+              baseUrl={baseUrl}
+              style={styles.posterCard}
+            />
           );
         }}
       />
@@ -146,7 +135,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E1E',
   },
   heroCard: {
-    marginTop: -48,
     marginBottom: 24,
     padding: 16,
     borderRadius: 16,
@@ -170,23 +158,6 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   posterCard: {
-    width: 130,
     gap: 8,
-  },
-  posterImage: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-    borderRadius: 14,
-    backgroundColor: '#2A2A2A',
-  },
-  posterPlaceholder: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-    borderRadius: 14,
-    backgroundColor: '#2A2A2A',
-  },
-  posterLabel: {
-    fontSize: 12,
-    color: '#D8D8D8',
   },
 });

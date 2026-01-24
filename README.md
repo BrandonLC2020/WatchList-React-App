@@ -1,8 +1,18 @@
 # WatchList React App
 
-A comprehensive mobile application for discovering movies and managing a personal watchlist. This project features a modern **React Native (Expo)** frontend and a robust **.NET 9.0 Web API** backend, utilizing **Google Cloud Firestore** for persistence and **The Movie Database (TMDB)** for data.
+A comprehensive mobile application for discovering movies and managing a personal watchlist. This project features a modern **React Native (Expo)** frontend and a robust **.NET 10.0 Web API** backend, utilizing **Google Cloud Firestore** for persistence and **The Movie Database (TMDB)** for data.
 
 ## 🚀 Tech Stack
+
+```mermaid
+graph TD
+    User(User) --> Frontend
+    Frontend[React Native (Expo)] --> Backend
+    Backend[ASP.NET Core Web API] --> Firestore(Google Cloud Firestore)
+    Backend --> TMDB("The Movie Database (TMDB) API")
+    Backend --> FirebaseAuth(Firebase Auth)
+    FirebaseAuth --> User
+```
 
 ### Frontend
 
@@ -15,9 +25,10 @@ A comprehensive mobile application for discovering movies and managing a persona
 
 ### Backend
 
-* **Framework:** ASP.NET Core Web API (.NET 9.0)
+* **Framework:** ASP.NET Core Web API (.NET 10.0)
 * **Language:** C#
 * **Database:** Google Cloud Firestore (NoSQL)
+    *Note: The project file includes dependencies for Entity Framework providers (SQL Server, PostgreSQL), but the current implementation is written to exclusively use Google Cloud Firestore as the data store.*
 * **Authentication:** JWT Bearer (Firebase Admin SDK integration)
 * **Documentation:** Swagger / OpenAPI
 * **External API:** [TMDbLib](https://github.com/LordMike/TMDbLib) (Wrapper for The Movie Database)
@@ -29,7 +40,7 @@ A comprehensive mobile application for discovering movies and managing a persona
 Before running the project, ensure you have the following installed:
 
 1. **Node.js** (LTS version recommended)
-2. **To run the Backend:** [.NET 9.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+2. **To run the Backend:** [.NET 10.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 3. **To run the Frontend:** [Expo Go](https://expo.dev/go) app on your physical device, or an Android/iOS Simulator.
 4. **API Keys:**
 * **TMDB API Key:** Get one at [themoviedb.org](https://www.themoviedb.org/documentation/api).

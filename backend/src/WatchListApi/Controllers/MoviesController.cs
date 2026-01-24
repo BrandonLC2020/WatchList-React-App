@@ -24,14 +24,14 @@ namespace WatchListApi.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<IActionResult> SearchMulti([FromQuery] string query)
+        public async Task<IActionResult> SearchMulti([FromQuery] string query, [FromQuery] int page = 1)
         {
             if (string.IsNullOrWhiteSpace(query))
             {
                 return BadRequest(ApiResponse<string>.Fail("Query is required."));
             }
 
-            var results = await _tmdbService.SearchMultiAsync(query);
+            var results = await _tmdbService.SearchMultiAsync(query, page);
             return Ok(ApiResponse<TmdbPagedResponse<TmdbSearchResult>?>.Ok(results));
         }
 

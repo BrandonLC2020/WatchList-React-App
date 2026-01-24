@@ -8,9 +8,9 @@ import {
 
 export const fetchMovieConfig = () => requestApi<TmdbConfiguration | null>('/api/movies/config');
 
-export const searchMovies = (query: string) =>
+export const searchMovies = (query: string, page = 1) =>
   requestApi<TmdbPagedResponse<TmdbSearchResult> | null>(
-    `/api/movies/search?query=${encodeURIComponent(query)}`,
+    `/api/movies/search?query=${encodeURIComponent(query)}&page=${page}`,
   );
 
 export const getTrendingMovies = () =>

@@ -9,16 +9,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
-import { fetchMovieConfig, searchMovies } from '@/api/tmdb';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { fetchMovieConfig, getTrendingMovies, searchMovies } from '@/api/tmdb';
+import { MediaCard } from '@/components/MediaCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import { TmdbSearchResult } from '@/constants/types';
 import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function TabTwoScreen() {
   const router = useRouter();
@@ -46,9 +48,19 @@ export default function TabTwoScreen() {
     return () => clearTimeout(handle);
   }, [query]);
 
-  const searchQuery = useQuery({
+  const trendingQuery = useQuery({
+    queryKey: ['trending'],
+    queryFn: getTrendingMovies,
+  });
+
+  const searchQuery = useInfiniteQuery({
     queryKey: ['search', debouncedQuery],
-    queryFn: () => searchMovies(debouncedQuery),
+    queryFn: ({ pageParam }) => searchMovies(debouncedQuery, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage || lastPage.page >= lastPage.total_pages) return undefined;
+      return lastPage.page + 1;
+    },
     enabled: Boolean(debouncedQuery),
   });
 
@@ -60,9 +72,15 @@ export default function TabTwoScreen() {
     return (path: string | null | undefined) => (path ? `${configBaseUrl}w500${path}` : null);
   }, [configQuery.data?.images?.secure_base_url]);
 
-  const results = (searchQuery.data?.results ?? []).filter(
+  const searchResults = (searchQuery.data?.pages.flatMap((page) => page?.results ?? []) ?? []).filter(
     (result) => result.media_type !== 'person',
   );
+
+  const trendingResults = (trendingQuery.data?.results ?? []).filter(
+    (result) => result.media_type !== 'person',
+  );
+
+  const results = debouncedQuery ? searchResults : trendingResults;
 
   const suggestedTags = ['Oppenheimer', 'Animated', 'Marvel', 'Drama', 'Comedy', 'Thriller'];
 
@@ -70,104 +88,114 @@ export default function TabTwoScreen() {
     router.push(`/movie/${item.id}`);
   };
 
+  const backgroundColor = useThemeColor({}, 'background');
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText style={styles.subtitle}>Search for movies from your watchlist backend.</ThemedText>
-      <ThemedView style={styles.searchContainer}>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search movies..."
-          placeholderTextColor="#9E9E9E"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.searchInput}
-        />
-        {searchQuery.isFetching ? <ActivityIndicator size="small" /> : null}
-      </ThemedView>
-      {searchQuery.isError ? (
-        <ThemedText style={styles.errorText}>Search failed. Please try again.</ThemedText>
-      ) : null}
+    <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <FlatList
         key={numColumns} // Force re-render on column change
         data={results}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={[styles.listContent, { gap }]}
+        contentContainerStyle={[styles.listContent, { gap, paddingHorizontal: 32 }]}
         numColumns={numColumns}
         columnWrapperStyle={[styles.gridRow, { gap }]}
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => {
-          const posterUrl = buildPosterUrl(item.poster_path);
-          const title = item.title ?? item.name ?? '';
-          return (
-            <Pressable style={[styles.gridItem, { width: itemWidth, maxWidth: itemWidth }]} onPress={() => handlePressItem(item)}>
-              {posterUrl ? (
-                <Image
-                  source={{ uri: posterUrl }}
-                  style={styles.poster}
-                  contentFit="cover"
-                  transition={400}
-                />
-              ) : (
-                <View style={styles.posterPlaceholder} />
-              )}
-              <ThemedText numberOfLines={2} style={styles.posterTitle}>
-                {title}
+        ListHeaderComponent={
+          <View style={styles.headerContent}>
+            <ThemedView style={styles.titleContainer}>
+              <ThemedText
+                type="title"
+                style={{
+                  fontFamily: Fonts.rounded,
+                }}>
+                Explore
               </ThemedText>
-            </Pressable>
+            </ThemedView>
+            <ThemedText style={styles.subtitle}>
+              Search for movies from your watchlist backend.
+            </ThemedText>
+            <ThemedView style={styles.searchContainer}>
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search movies..."
+                placeholderTextColor="#9E9E9E"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.searchInput}
+              />
+              {searchQuery.isFetching ? <ActivityIndicator size="small" /> : null}
+            </ThemedView>
+            {searchQuery.isError ? (
+              <ThemedText style={styles.errorText}>Search failed. Please try again.</ThemedText>
+            ) : null}
+
+            {!debouncedQuery && (
+              <View style={styles.tagsContainer}>
+                <ThemedText style={styles.sectionTitle}>Suggested</ThemedText>
+                <View style={styles.tagsRow}>
+                  {suggestedTags.map((tag) => (
+                    <Pressable key={tag} style={styles.tag} onPress={() => setQuery(tag)}>
+                      <ThemedText style={styles.tagText}>{tag}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+                <ThemedText style={[styles.sectionTitle, { marginTop: 24 }]}>Trending Now</ThemedText>
+              </View>
+            )}
+          </View>
+        }
+        renderItem={({ item }) => {
+          return (
+            <MediaCard
+              item={item}
+              onPress={handlePressItem}
+              width={itemWidth}
+              baseUrl={configQuery.data?.images?.secure_base_url}
+              style={styles.gridItem}
+            />
           );
         }}
         ListEmptyComponent={
           query.trim() ? (
             <ThemedText style={styles.emptyText}>
-              {searchQuery.isFetching ? 'Searching...' : 'No results yet.'}
+              {searchQuery.isFetching ? 'Searching...' : 'No results found.'}
             </ThemedText>
-          ) : (
-            <View style={styles.tagsContainer}>
-              <ThemedText style={styles.emptyText}>Try one of these searches:</ThemedText>
-              <View style={styles.tagsRow}>
-                {suggestedTags.map((tag) => (
-                  <Pressable key={tag} style={styles.tag} onPress={() => setQuery(tag)}>
-                    <ThemedText style={styles.tagText}>{tag}</ThemedText>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )
+          ) : trendingQuery.isLoading ? (
+            <ActivityIndicator size="small" style={{ marginTop: 20 }} />
+          ) : null
+        }
+        onEndReached={() => {
+          if (searchQuery.hasNextPage) {
+            searchQuery.fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          searchQuery.isFetchingNextPage ? (
+            <ActivityIndicator size="small" style={{ marginVertical: 16 }} />
+          ) : null
         }
       />
-    </ParallaxScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  headerContent: {
+    paddingHorizontal: 32,
+    paddingTop: 32,
+    gap: 16,
   },
   titleContainer: {
     flexDirection: 'row',
     gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#EDEDED',
+    marginBottom: 12,
   },
   subtitle: {
     marginBottom: 12,
@@ -202,22 +230,6 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: '32%',
     gap: 8,
-  },
-  poster: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-    borderRadius: 12,
-    backgroundColor: '#E0E0E0',
-  },
-  posterPlaceholder: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-    borderRadius: 12,
-    backgroundColor: '#E0E0E0',
-  },
-  posterTitle: {
-    fontSize: 12,
-    color: '#D0D0D0',
   },
   emptyText: {
     color: '#6B6B6B',

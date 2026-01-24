@@ -32,9 +32,9 @@ namespace WatchListApi.Services
                 () => GetAsync<TmdbConfiguration>($"{_tmdbSettings.BaseUrl}/configuration?api_key={_tmdbSettings.ApiKey}"));
         }
 
-        public Task<TmdbPagedResponse<TmdbSearchResult>?> SearchMultiAsync(string query)
+        public Task<TmdbPagedResponse<TmdbSearchResult>?> SearchMultiAsync(string query, int page = 1)
         {
-            var url = $"{_tmdbSettings.BaseUrl}/search/multi?api_key={_tmdbSettings.ApiKey}&query={Uri.EscapeDataString(query)}";
+            var url = $"{_tmdbSettings.BaseUrl}/search/multi?api_key={_tmdbSettings.ApiKey}&query={Uri.EscapeDataString(query)}&page={page}";
             return GetAsync<TmdbPagedResponse<TmdbSearchResult>>(url);
         }
 

@@ -6,7 +6,7 @@ namespace WatchListApi.Services
     public interface ITmdbService
     {
         Task<TmdbConfiguration?> GetConfigurationAsync();
-        Task<TmdbPagedResponse<TmdbSearchResult>?> SearchMultiAsync(string query);
+        Task<TmdbPagedResponse<TmdbSearchResult>?> SearchMultiAsync(string query, int page = 1);
         Task<TmdbPagedResponse<TmdbSearchResult>?> GetTrendingAsync();
         Task<TmdbPagedResponse<TmdbSearchResult>?> DiscoverAsync(int page = 1);
         Task<TmdbMovieDetails?> GetMovieDetailsAsync(int id);

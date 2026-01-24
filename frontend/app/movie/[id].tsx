@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { fetchMovieConfig, getMovieDetails } from '@/api/tmdb';
 import { addToWatchlist, getWatchlist, removeFromWatchlist } from '@/api/watchlist';
@@ -89,100 +90,175 @@ export default function MovieDetailsScreen() {
     return regionMap.US ?? Object.values(regionMap)[0] ?? null;
   }, [detailsQuery.data?.providers?.results]);
 
+  const cast = details?.credits?.cast?.slice(0, 15) ?? [];
+  const crew = details?.credits?.crew ?? [];
+  const directors = crew.filter(c => c.job === 'Director');
+  const writers = crew.filter(c => c.job === 'Screenplay' || c.job === 'Writer' || c.department === 'Writing');
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#111111', dark: '#0F0F0F' }}
       headerImage={
         posterUrl ? (
-          <Image source={{ uri: posterUrl }} style={styles.heroImage} contentFit="cover" />
+          <View style={styles.headerImageContainer}>
+            <Image source={{ uri: posterUrl }} style={styles.heroImage} contentFit="cover" />
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+          </View>
         ) : (
           <View style={styles.heroPlaceholder} />
         )
       }>
-      <ThemedView style={styles.headerActions}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <IconSymbol size={20} name="chevron.left" color="#EDEDED" />
-        </Pressable>
-        <Pressable
-          onPress={handleToggleWatchlist}
-          style={[styles.fab, isInWatchlist ? styles.fabActive : null]}>
-          <IconSymbol
-            size={20}
-            name={isInWatchlist ? 'checkmark' : 'plus'}
-            color={isInWatchlist ? '#111111' : '#EDEDED'}
+
+
+      <View style={styles.contentContainer}>
+        <View style={styles.heroRow}>
+          <Image
+            source={{ uri: posterUrl ?? undefined }}
+            style={styles.posterImage}
+            contentFit="cover"
+            transition={300}
           />
-        </Pressable>
-      </ThemedView>
+          <View style={styles.heroInfo}>
+            <ThemedText type="title" style={styles.titleText}>
+              {details?.title ?? 'Loading...'}
+            </ThemedText>
 
-      <ThemedView style={styles.titleBlock}>
-        <ThemedText type="title" style={styles.titleText}>
-          {details?.title ?? 'Loading...'}
-        </ThemedText>
-        <ThemedText style={styles.subtitleText}>
-          {releaseYear
-            ? `${releaseYear} · ${details?.runtime ? `${details.runtime} min` : 'Runtime n/a'}`
-            : 'Runtime unavailable'}
-        </ThemedText>
-      </ThemedView>
+            <ThemedText style={styles.subtitleText}>
+              {releaseYear
+                ? `${releaseYear} · ${details?.runtime ? `${details.runtime} min` : 'Runtime n/a'}`
+                : 'Runtime unavailable'}
+            </ThemedText>
 
-      {details?.tagline ? (
-        <ThemedText style={styles.tagline}>{details.tagline}</ThemedText>
-      ) : null}
-
-      {details?.overview ? (
-        <ThemedText style={styles.overview}>{details.overview}</ThemedText>
-      ) : null}
-
-      {providers ? (
-        <ThemedView style={styles.providersSection}>
-          <ThemedText type="subtitle" style={styles.providersTitle}>
-            Where to Watch
-          </ThemedText>
-          <View style={styles.providerRow}>
-            {(providers.flatrate ?? []).slice(0, 6).map((provider) => {
-              const logoUrl = buildImageUrl(baseUrl, 'w154', provider.logo_path);
-              if (!logoUrl) return null;
-              return (
-                <Image
-                  key={provider.provider_id}
-                  source={{ uri: logoUrl }}
-                  style={styles.providerLogo}
-                  contentFit="cover"
-                  transition={300}
+            <View style={styles.actionRow}>
+              <Pressable
+                onPress={handleToggleWatchlist}
+                style={[styles.fab, isInWatchlist ? styles.fabActive : null]}>
+                <IconSymbol
+                  size={20}
+                  name={isInWatchlist ? 'checkmark' : 'plus'}
+                  color={isInWatchlist ? '#111111' : '#EDEDED'}
                 />
-              );
-            })}
+              </Pressable>
+              {/* Optional: Add more buttons here later */}
+            </View>
           </View>
-        </ThemedView>
-      ) : null}
+        </View>
+
+        {details?.tagline ? (
+          <ThemedText style={styles.tagline}>{details.tagline}</ThemedText>
+        ) : null}
+
+        {details?.overview ? (
+          <ThemedText style={styles.overview}>{details.overview}</ThemedText>
+        ) : null}
+
+        {/* Top Billing / Key Crew */}
+        {directors.length > 0 && (
+          <View style={styles.metaRow}>
+            <ThemedText style={styles.metaLabel}>Director:</ThemedText>
+            <ThemedText style={styles.metaValue}>{directors.map(d => d.name).join(', ')}</ThemedText>
+          </View>
+        )}
+        {writers.length > 0 && (
+          <View style={styles.metaRow}>
+            <ThemedText style={styles.metaLabel}>Writers:</ThemedText>
+            <ThemedText style={styles.metaValue}>{writers.slice(0, 3).map(d => d.name).join(', ')}</ThemedText>
+          </View>
+        )}
+
+        {/* Cast Section */}
+        {cast.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Top Cast</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castScroll}>
+              {cast.map((member) => (
+                <View key={member.id} style={styles.castCard}>
+                  <Image
+                    source={{ uri: buildImageUrl(baseUrl, 'w185', member.profile_path) ?? undefined }}
+                    style={styles.castImage}
+                    contentFit="cover"
+                  />
+                  <ThemedText numberOfLines={1} style={styles.castName}>{member.name}</ThemedText>
+                  <ThemedText numberOfLines={1} style={styles.castCharacter}>{member.character}</ThemedText>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {providers ? (
+          <ThemedView style={styles.providersSection}>
+            <ThemedText type="subtitle" style={styles.providersTitle}>
+              Where to Watch
+            </ThemedText>
+            <View style={styles.providerRow}>
+              {(providers.flatrate ?? []).slice(0, 6).map((provider) => {
+                const logoUrl = buildImageUrl(baseUrl, 'w154', provider.logo_path);
+                if (!logoUrl) return null;
+                return (
+                  <Image
+                    key={provider.provider_id}
+                    source={{ uri: logoUrl }}
+                    style={styles.providerLogo}
+                    contentFit="cover"
+                    transition={300}
+                  />
+                );
+              })}
+            </View>
+          </ThemedView>
+        ) : null}
+      </View>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  heroImage: {
+  headerImageContainer: {
     width: '100%',
     height: 380,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
   heroPlaceholder: {
     width: '100%',
     height: 380,
     backgroundColor: '#1E1E1E',
   },
-  headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: -40,
-    marginBottom: 16,
+
+  contentContainer: {
+    gap: 16,
+    paddingBottom: 32,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
+  heroRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+  },
+  posterImage: {
+    width: 100,
+    height: 150,
+    borderRadius: 12,
+    backgroundColor: '#2A2A2A',
+  },
+  heroInfo: {
+    flex: 1,
+    gap: 8,
     justifyContent: 'center',
-    backgroundColor: '#1E1E1E',
+  },
+  titleText: {
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: '#B5B5B5',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 8,
   },
   fab: {
     width: 44,
@@ -195,24 +271,57 @@ const styles = StyleSheet.create({
   fabActive: {
     backgroundColor: '#F5C518',
   },
-  titleBlock: {
-    gap: 6,
-  },
-  titleText: {
-    fontSize: 26,
-  },
-  subtitleText: {
-    color: '#B5B5B5',
-  },
   tagline: {
-    marginTop: 12,
     color: '#E0E0E0',
     fontStyle: 'italic',
+    marginTop: 4,
   },
   overview: {
-    marginTop: 12,
     color: '#C7C7C7',
-    lineHeight: 20,
+    lineHeight: 22,
+    fontSize: 15,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  metaLabel: {
+    fontWeight: 'bold',
+    color: '#EDEDED',
+  },
+  metaValue: {
+    color: '#C7C7C7',
+    flex: 1,
+  },
+  sectionContainer: {
+    marginTop: 24,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  castScroll: {
+    gap: 12,
+  },
+  castCard: {
+    width: 100,
+  },
+  castImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50, // Circular
+    backgroundColor: '#2A2A2A',
+    marginBottom: 8,
+  },
+  castName: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  castCharacter: {
+    fontSize: 10,
+    color: '#B5B5B5',
+    textAlign: 'center',
   },
   providersSection: {
     marginTop: 24,
