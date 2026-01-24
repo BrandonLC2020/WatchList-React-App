@@ -7,7 +7,7 @@ A comprehensive mobile application for discovering movies and managing a persona
 ```mermaid
 graph TD
     User(User) --> Frontend
-    Frontend[React Native (Expo)] --> Backend
+    Frontend["React Native (Expo)"] --> Backend
     Backend[ASP.NET Core Web API] --> Firestore(Google Cloud Firestore)
     Backend --> TMDB("The Movie Database (TMDB) API")
     Backend --> FirebaseAuth(Firebase Auth)
